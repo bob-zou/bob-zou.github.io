@@ -4,6 +4,9 @@ You can use the [editor on GitHub](https://github.com/bob-zou/notes/edit/gh-page
 
 Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
 
+## index
+- [Golang三色标记、混合写屏障GC模式图文全分析](golang/2021-01-27-golang_gc.md)
+
 ## Markdown
 
 Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
