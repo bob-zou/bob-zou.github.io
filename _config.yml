@@ -1,1 +1,4 @@
-theme: jekyll-theme-architect
+theme: jekyll-theme-leap-day
+title: 日志笔记
+description: 在工作学习过程中记录相关知识
+google_analytics: true
