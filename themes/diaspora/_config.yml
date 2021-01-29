@@ -64,7 +64,7 @@ gitalk:
     # 是否启用评论功能
     enable: true
     # 是否自动展开评论框
-    autoExpand: false
+    autoExpand: true
     # 应用编号
     clientID: 'GITALK_CLIENT_ID'
     # 应用秘钥
@@ -84,7 +84,7 @@ gitalk:
 keywords: BobZou
 
 # 要使用google_analytics进行统计的话，这里需要配置ID
-google_analytics:
+google_analytics: G-MTN9237PJK
 
 # 网站ico
 favicon: https://cdn.jsdelivr.net/gh/bob-zou/bob-zou.github.io/themes/diaspora/source/img/favicon.png
