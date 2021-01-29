@@ -1,0 +1,223 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN,en,default" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Golang三色标记、混合写屏障GC模式图文全分析 - Bob Zou</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="BobZou,"> 
+    <meta name="description" content="
+垃圾回收(Garbage Collection，简称GC)是编程语言中提供的自动的内存管理机制，自动释放不需要的对象，让出存储器资源，无需程序员手动执行。
+Golang中的垃圾回收主要应用三色标记,"> 
+    <meta name="author" content="Bob Zou"> 
+    <link rel="alternative" href="atom.xml" title="Bob Zou" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+	<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads"
+        src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+<meta name="generator" content="Hexo 5.3.0">
+<style>.github-emoji { position: relative; display: inline-block; width: 1.2em; min-height: 1.2em; overflow: hidden; vertical-align: top; color: transparent; }  .github-emoji > span { position: relative; z-index: 10; }  .github-emoji img, .github-emoji .fancybox { margin: 0 !important; padding: 0 !important; border: none !important; outline: none !important; text-decoration: none !important; user-select: none !important; cursor: auto !important; }  .github-emoji img { height: 1.2em !important; width: 1.2em !important; position: absolute !important; left: 50% !important; top: 50% !important; transform: translate(-50%, -50%) !important; user-select: none !important; cursor: auto !important; } .github-emoji-fallback { color: inherit; } .github-emoji-fallback img { opacity: 0 !important; }</style>
+</head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">Bob Zou</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="iconfont icon-home image-icon" href="javascript:;" data-url="https://blog.zouyapeng.com"></a>
+    <div title="播放/暂停" class="iconfont icon-play"></div>
+    <h3 class="subtitle">Golang三色标记、混合写屏障GC模式图文全分析</h3>
+    <div class="social">
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="iconfont icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">Golang三色标记、混合写屏障GC模式图文全分析</h1>
+        <div class="stuff">
+            <span>一月 28, 2021</span>
+            
+  <ul class="post-tags-list" itemprop="keywords"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/gc/" rel="tag">gc</a></li><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/golang/" rel="tag">golang</a></li><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/%E9%9D%A2%E8%AF%95%E9%A2%98/" rel="tag">面试题</a></li></ul>
+
+
+        </div>
+        <div class="content markdown">
+            <blockquote>
+<p>垃圾回收(Garbage Collection，简称GC)是编程语言中提供的自动的内存管理机制，自动释放不需要的对象，让出存储器资源，无需程序员手动执行。</p>
+<p>Golang中的垃圾回收主要应用三色标记法，GC过程和其他用户goroutine可并发运行，但需要一定时间的STW(stop the world)，STW的过程中，CPU不执行用户代码，全部用于垃圾回收，这个过程的影响很大，Golang进行了多次的迭代优化来解决这个问题。</p>
+</blockquote>
+<h2 id="内容提纲"><a href="#内容提纲" class="headerlink" title="内容提纲"></a>内容提纲</h2><ul>
+<li>G0 V1.3之前的标记-清除(mark and sweep)算法</li>
+<li>Go V1.3之前的标记-清扫(mark and sweep)的缺点</li>
+<li>Go V1.5的三色并发标记法</li>
+<li>Go V1.5的三色标记为什么需要STW</li>
+<li>Go V1.5的三色标记为什么需要屏障机制(“强-弱” 三色不变式、插入屏障、删除屏障 )</li>
+<li>Go V1.8混合写屏障机制</li>
+<li>Go V1.8混合写屏障机制的全场景分析</li>
+</ul>
+<h2 id="Go-V1-3之前的标记-清除-mark-and-sweep-算法"><a href="#Go-V1-3之前的标记-清除-mark-and-sweep-算法" class="headerlink" title="Go V1.3之前的标记-清除(mark and sweep)算法"></a>Go V1.3之前的标记-清除(mark and sweep)算法</h2><p>此算法主要有两个主要的步骤：</p>
+<ul>
+<li>标记(Mark phase)</li>
+<li>清除(Sweep phase)</li>
+</ul>
+<p><strong>第一步</strong> 暂停程序业务逻辑<br>操作非常简单，但是有一点需要额外注意：mark and sweep算法在执行的时候，需要程序暂停，即<code>STW(stop the world)</code>。<br>也就是说，这段时间程序会卡在那儿。<br><img src="mas-1.png" alt="setp-1"></p>
+<p><strong>第二步</strong> 开始标记，程序找出它所有可达的对象，并做上标记<br><img src="mas-2.png" alt="setp-2"></p>
+<p><strong>第三步</strong> 标记完了之后，然后开始清除未标记的对象<br><img src="mas-3.png" alt="setp-3"></p>
+<p><strong>第四步</strong> 停止暂停，让程序继续跑。<br>然后循环重复这个过程，直到process程序生命周期结束。</p>
+<h2 id="标记-清扫-mark-and-sweep-的缺点"><a href="#标记-清扫-mark-and-sweep-的缺点" class="headerlink" title="标记-清扫(mark and sweep)的缺点"></a>标记-清扫(mark and sweep)的缺点</h2><ul>
+<li><code>STW(stop the world)</code> 让程序暂停，程序出现卡顿 (<code>重要问题</code>)。</li>
+<li>标记需要扫描整个heap</li>
+<li>清除数据会产生heap碎片</li>
+</ul>
+<p>Go V1.3版本之前就是以上来实施的, 流程是<br><img src="mas-4.png" alt="before v1.3"></p>
+<p>Go V1.3 做了简单的优化,将STW提前, 减少STW暂停的时间范围<br><img src="mas-5.png" alt="v1.3"></p>
+<p><strong>这里面最重要的问题就是：mark-and-sweep 算法会暂停整个程序</strong></p>
+<p>Go是如何面对并这个问题的呢？接下来Go V1.5版本 就用<code>三色并发标记法</code>来优化这个问题.</p>
+<h2 id="Go-V1-5的三色并发标记法"><a href="#Go-V1-5的三色并发标记法" class="headerlink" title="Go V1.5的三色并发标记法"></a>Go V1.5的三色并发标记法</h2><p>三色标记法 实际上就是通过三个阶段的标记来确定清楚的对象都有哪些. 我们来看一下具体的过程.</p>
+<h2 id="没有STW的三色标记法"><a href="#没有STW的三色标记法" class="headerlink" title="没有STW的三色标记法"></a>没有STW的三色标记法</h2><h2 id="屏障机制"><a href="#屏障机制" class="headerlink" title="屏障机制"></a>屏障机制</h2><h2 id="Go-V1-8的混合写屏障-hybrid-write-barrier-机制"><a href="#Go-V1-8的混合写屏障-hybrid-write-barrier-机制" class="headerlink" title="Go V1.8的混合写屏障(hybrid write barrier)机制"></a>Go V1.8的混合写屏障(hybrid write barrier)机制</h2><h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>以上便是Golang的GC全部的标记-清除逻辑及场景演示全过程。</p>
+<p>GoV1.3- 普通标记清除法，整体过程需要启动STW，效率极低。<br>GoV1.5- 三色标记法， 堆空间启动写屏障，栈空间不启动，全部扫描之后，需要重新扫描一次栈(需要STW)，效率普通<br>GoV1.8-三色标记法，混合写屏障机制， 栈空间不启动，堆空间启动。整个过程几乎不需要STW，效率较高。</p>
+<p>参考文献:</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/wangyiyang/p/12191591.html">https://www.cnblogs.com/wangyiyang/p/12191591.html</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/eb6b3aff9ca5">https://www.jianshu.com/p/eb6b3aff9ca5</a></li>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/74853110">https://zhuanlan.zhihu.com/p/74853110</a></li>
+</ul>
+<p><strong>原文作者:</strong> <a target="_blank" rel="noopener" href="https://segmentfault.com/u/aceld">刘丹冰 Aceld</a><br><strong>原文地址:</strong> <a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000022030353">Golang三色标记、混合写屏障GC模式图文全分析</a></p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title='0' data-url='http://link.hhtjim.com/163/425570952.mp3'></li>
+                        
+                    
+                        
+                            <li title='1' data-url='http://link.hhtjim.com/163/425570952.mp3'></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id='gitalk-container' class="comment link"
+		data-enable='true'
+        data-ae='false'
+        data-ci=''
+        data-cs=''
+        data-r='bob-zou.github.io'
+        data-o='bob-zou'
+        data-a='bob-zou'
+        data-d='false'
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/typed.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+</html>
