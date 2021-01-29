@@ -115,4 +115,24 @@
         <tag>面试题</tag>
       </tags>
   </entry>
+  <entry>
+    <title>Golang调度器GMP原理与调度全分析</title>
+    <url>/2021/01/29/golang-gmp/</url>
+    <content><![CDATA[<blockquote>
+<p>该文章主要详细具体的介绍Goroutine调度器过程及原理，可以对Go调度器的详细调度过程有一个清晰的理解。</p>
+</blockquote>
+<h2 id="内容提纲"><a href="#内容提纲" class="headerlink" title="内容提纲"></a>内容提纲</h2><ul>
+<li>Golang调度器的由来</li>
+<li>Goroutine调度器的GMP模型及设计思想</li>
+<li>Goroutine调度场景过程全图文解析</li>
+</ul>
+<p><strong>原文作者:</strong> <a href="https://segmentfault.com/u/aceld">刘丹冰 Aceld</a><br><strong>原文地址:</strong> <a href="https://segmentfault.com/a/1190000021951119">Golang三色标记、混合写屏障GC模式图文全分析</a></p>
+]]></content>
+      <tags>
+        <tag>golang</tag>
+        <tag>面试题</tag>
+        <tag>goroutine</tag>
+        <tag>gmp</tag>
+      </tags>
+  </entry>
 </search>
