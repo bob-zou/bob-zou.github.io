@@ -2,7 +2,7 @@
 title: Golang三色标记、混合写屏障GC模式图文全分析
 date: 2021-01-28 11:05:00
 tags: [golang, gc, 面试题]
-cover: https://cdn.jsdelivr.net/gh/bob-zou/bob-zou.github.io/source/covers/golang-001.jpg
+cover: https://cdn.jsdelivr.net/gh/bob-zou/bob-zou.github.io/source/covers/golang-001.png
 ---
 > 垃圾回收(Garbage Collection，简称GC)是编程语言中提供的自动的内存管理机制，自动释放不需要的对象，让出存储器资源，无需程序员手动执行。
 > 
