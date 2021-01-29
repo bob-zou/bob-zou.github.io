@@ -67,9 +67,9 @@ gitalk:
     # 是否自动展开评论框
     autoExpand: false
     # 应用编号
-    clientID: ''
+    clientID: 'GITALK_CLIENT_ID'
     # 应用秘钥
-    clientSecret: ''
+    clientSecret: 'GITALK_CLIENT_SECRET'
     # issue仓库名
     repo: 'bob-zou.github.io'
     # Github名

@@ -7,6 +7,8 @@ branches:
   only:
     - master # build master branch only
 script:
+  - sed -i s/GITALK_CLIENT_ID/$CLIENT_ID/ themes/diaspora/_config.yml
+  - sed -i s/GITALK_CLIENT_SECRET/$CLIENT_SECRET/ themes/diaspora/_config.yml
   - hexo generate # generate static files
 deploy:
   provider: pages
