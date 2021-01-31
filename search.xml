@@ -56,16 +56,16 @@
 <p>为了遵循上述的两个方式,Golang团队初步得到了两种屏障方式<code>插入屏障</code>和<code>删除屏障</code></p>
 <h3 id="插入屏障"><a href="#插入屏障" class="headerlink" title="插入屏障"></a>插入屏障</h3><p><strong>具体操作</strong>: 在<code>A对象</code>引用<code>B对象</code>的时候，<code>B对象</code>被标记为灰色。(将B挂在A下游，B必须被标记为<code>灰色</code>)<br><strong>满足</strong>: <strong>强三色不变式</strong>. (不存在<code>黑色</code>对象引用<code>白色</code>对象的情况了， 因为<code>白色</code>会强制变成<code>灰色</code>)</p>
 <p>伪码如下:</p>
-<figure class="highlight plain"><table><tbody><tr><td class="code"><pre><span class="line">添加下游对象(当前下游对象slot, 新下游对象ptr) {   </span><br><span class="line">  //1</span><br><span class="line">  标记灰色(新下游对象ptr)   </span><br><span class="line">  </span><br><span class="line">  //2</span><br><span class="line">  当前下游对象slot = 新下游对象ptr                    </span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">添加下游对象(当前下游对象slot, 新下游对象ptr) &#123;   </span><br><span class="line">  &#x2F;&#x2F;1</span><br><span class="line">  标记灰色(新下游对象ptr)   </span><br><span class="line">  </span><br><span class="line">  &#x2F;&#x2F;2</span><br><span class="line">  当前下游对象slot &#x3D; 新下游对象ptr                    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>两种场景：</p>
-<figure class="highlight plain"><table><tbody><tr><td class="code"><pre><span class="line">A.添加下游对象(nil, B)   //A 之前没有下游， 新添加一个下游对象B， B被标记为灰色</span><br><span class="line">A.添加下游对象(C, B)     //A 将下游对象C 更换为B，  B被标记为灰色</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">A.添加下游对象(nil, B)   &#x2F;&#x2F;A 之前没有下游， 新添加一个下游对象B， B被标记为灰色</span><br><span class="line">A.添加下游对象(C, B)     &#x2F;&#x2F;A 将下游对象C 更换为B，  B被标记为灰色</span><br></pre></td></tr></table></figure>
 <p>这段伪码逻辑就是写屏障.<br>我们知道,<code>黑色</code>对象的内存槽有两种位置, <code>栈</code>和<code>堆</code>.<br><code>栈</code>空间的特点是容量小,但是要求相应速度快,因为函数调用弹出频繁使用,所以<code>插入屏障</code>机制,在<code>栈</code>空间的对象操作中不使用.<br>而仅仅使用在<code>堆</code>空间对象的操作中.</p>
 <p>接下来，我们用几张图，来模拟整个一个详细的过程， 希望您能够更可观的看清晰整体流程。<br><img src="sw-3.png" alt="sw-3"><br><img src="sw-4.png" alt="sw-4"><br><img src="sw-5.png" alt="sw-5"><br><img src="sw-6.png" alt="sw-6"><br><img src="sw-7.png" alt="sw-7"><br><img src="sw-8.png" alt="sw-8"><br>但是如果<code>栈</code>不添加,当全部三色标记扫描之后,<code>栈</code>上有可能依然存在<code>白色</code>对象被引用的情况(如上图的<code>对象9</code>).<br>所以要对<code>栈</code>重新进行三色标记扫描, 但这次为了对象不丢失, 要对本次标记扫描启动<code>STW</code>暂停.<br>直到栈空间的三色标记结束.<br><img src="sw-9.png" alt="sw-9"><br><img src="sw-10.png" alt="sw-10"><br><img src="sw-11.png" alt="sw-11"><br>最后将<code>栈</code>和<code>堆</code>空间扫描剩余的全部<code>白色</code>节点清除. 这次<code>STW</code>大约的时间在<code>10~100ms</code>间.<br><img src="sw-12.png" alt="sw-12"></p>
 <h3 id="删除屏蔽"><a href="#删除屏蔽" class="headerlink" title="删除屏蔽"></a>删除屏蔽</h3><p><strong>具体操作</strong>: 被删除的对象，如果自身为<code>灰色</code>或者<code>白色</code>，那么被标记为<code>灰色</code>。<br><strong>满足</strong>: <strong>弱三色不变式</strong>. (保护<code>灰色</code>对象到<code>白色</code>对象的路径不会断)</p>
 <p>伪代码：</p>
-<figure class="highlight plain"><table><tbody><tr><td class="code"><pre><span class="line">添加下游对象(当前下游对象slot， 新下游对象ptr) {</span><br><span class="line">  //1</span><br><span class="line">  if (当前对象是灰色 || 当前对象是白色) {</span><br><span class="line">      标记灰色(当前下游对象slot)     //slot为被删除对象， 标记为灰色</span><br><span class="line">  }</span><br><span class="line">  </span><br><span class="line">  //2</span><br><span class="line">  当前下游对象slot = 新下游对象ptr</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">添加下游对象(当前下游对象slot， 新下游对象ptr) &#123;</span><br><span class="line">  &#x2F;&#x2F;1</span><br><span class="line">  if (当前对象是灰色 || 当前对象是白色) &#123;</span><br><span class="line">      标记灰色(当前下游对象slot)     &#x2F;&#x2F;slot为被删除对象， 标记为灰色</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  &#x2F;&#x2F;2</span><br><span class="line">  当前下游对象slot &#x3D; 新下游对象ptr</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>两种场景：</p>
-<figure class="highlight plain"><table><tbody><tr><td class="code"><pre><span class="line">A.添加下游对象(B, nil)   //A对象，删除B对象的引用  B被A删除，被标记为灰(如果A为灰度或者A为白色)</span><br><span class="line">A.添加下游对象(B, C)     //A对象，更换下游B变成C   B被A删除，被标记为灰(如果A为灰度或者A为白色)</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">A.添加下游对象(B, nil)   &#x2F;&#x2F;A对象，删除B对象的引用  B被A删除，被标记为灰(如果A为灰度或者A为白色)</span><br><span class="line">A.添加下游对象(B, C)     &#x2F;&#x2F;A对象，更换下游B变成C   B被A删除，被标记为灰(如果A为灰度或者A为白色)</span><br></pre></td></tr></table></figure>
 <p>接下来，我们用几张图，来模拟整个一个详细的过程， 希望您能够更可观的看清晰整体流程。<br><img src="sw-13.png" alt="sw-13"><br><img src="sw-14.png" alt="sw-14"><br><img src="sw-15.png" alt="sw-15"><br><img src="sw-16.png" alt="sw-16"><br><img src="sw-17.png" alt="sw-17"><br><img src="sw-18.png" alt="sw-18"><br><img src="sw-19.png" alt="sw-19"></p>
 <p>这种方式的回收精度低，一个对象即使被删除了最后一个指向它的指针也依旧可以活过这一轮，在下一轮GC中被清理掉。</p>
 <h2 id="六、Go-V1-8的混合写屏障-hybrid-write-barrier-机制"><a href="#六、Go-V1-8的混合写屏障-hybrid-write-barrier-机制" class="headerlink" title="六、Go V1.8的混合写屏障(hybrid write barrier)机制"></a>六、Go V1.8的混合写屏障(hybrid write barrier)机制</h2><p>插入写屏障和删除写屏障的短板：</p>
@@ -83,20 +83,20 @@
 <p><strong>满足</strong>: <strong>变形的弱三色不变式</strong></p>
 <p><strong>这里我们注意， 屏障技术是不在栈上应用的，因为要保证栈的运行效率</strong></p>
 <p>伪代码：</p>
-<figure class="highlight plain"><table><tbody><tr><td class="code"><pre><span class="line">添加下游对象(当前下游对象slot, 新下游对象ptr) {</span><br><span class="line">    //1 </span><br><span class="line">    标记灰色(当前下游对象slot)    //只要当前下游对象被移走，就标记灰色</span><br><span class="line">      </span><br><span class="line">    //2 </span><br><span class="line">    标记灰色(新下游对象ptr)</span><br><span class="line">          </span><br><span class="line">    //3</span><br><span class="line">    当前下游对象slot = 新下游对象ptr</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">添加下游对象(当前下游对象slot, 新下游对象ptr) &#123;</span><br><span class="line">    &#x2F;&#x2F;1 </span><br><span class="line">    标记灰色(当前下游对象slot)    &#x2F;&#x2F;只要当前下游对象被移走，就标记灰色</span><br><span class="line">      </span><br><span class="line">    &#x2F;&#x2F;2 </span><br><span class="line">    标记灰色(新下游对象ptr)</span><br><span class="line">          </span><br><span class="line">    &#x2F;&#x2F;3</span><br><span class="line">    当前下游对象slot &#x3D; 新下游对象ptr</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h3 id="混合写屏障的具体场景分析"><a href="#混合写屏障的具体场景分析" class="headerlink" title="混合写屏障的具体场景分析"></a>混合写屏障的具体场景分析</h3><p>注意<code>混合写屏障</code>是<code>GC</code>的一种屏障机制，所以只是当程序执行<code>GC</code>的时候，才会触发这种机制。<br>接下来，我们用几张图，来模拟整个一个详细的过程， 希望您能够更可观的看清晰整体流程。</p>
 <p><strong>GC开始：扫描栈区，将可达对象全部标记为黑</strong><br><img src="hwb-1.png" alt="hwb-1"><br><img src="hwb-2.png" alt="hwb-2"></p>
 <p><strong>场景一</strong><br>对象被一个<code>堆</code>对象删除引用，成为<code>栈</code>对象的下游<br>伪代码:</p>
-<figure class="highlight plain"><table><tbody><tr><td class="code"><pre><span class="line">//前提：堆对象4-&gt;对象7 = 对象7；  //对象7 被 对象4引用</span><br><span class="line">栈对象1-&gt;对象7 = 堆对象7；  //将堆对象7 挂在 栈对象1 下游</span><br><span class="line">堆对象4-&gt;对象7 = null；    //对象4 删除引用 对象7</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#x2F;&#x2F;前提：堆对象4-&gt;对象7 &#x3D; 对象7；  &#x2F;&#x2F;对象7 被 对象4引用</span><br><span class="line">栈对象1-&gt;对象7 &#x3D; 堆对象7；  &#x2F;&#x2F;将堆对象7 挂在 栈对象1 下游</span><br><span class="line">堆对象4-&gt;对象7 &#x3D; null；    &#x2F;&#x2F;对象4 删除引用 对象7</span><br></pre></td></tr></table></figure>
 <p><img src="hwb-3.png" alt="hwb-3"><br><img src="hwb-4.png" alt="hwb-4"></p>
 <p><strong>场景二</strong><br>对象被一个<code>栈</code>对象删除引用，成为另一个<code>栈</code>对象的下游<br>伪代码:</p>
-<figure class="highlight plain"><table><tbody><tr><td class="code"><pre><span class="line">new 栈对象9；</span><br><span class="line">对象8-&gt;对象3 = 对象3；      //将栈对象3 挂在 栈对象9 下游</span><br><span class="line">对象2-&gt;对象3 = null；      //对象2 删除引用 对象3</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">new 栈对象9；</span><br><span class="line">对象8-&gt;对象3 &#x3D; 对象3；      &#x2F;&#x2F;将栈对象3 挂在 栈对象9 下游</span><br><span class="line">对象2-&gt;对象3 &#x3D; null；      &#x2F;&#x2F;对象2 删除引用 对象3</span><br></pre></td></tr></table></figure>
 <p><img src="hwb-5.png" alt="hwb-5"><br><img src="hwb-6.png" alt="hwb-6"><br><img src="hwb-7.png" alt="hwb-7"></p>
 <p><strong>场景三</strong><br>对象被一个<code>堆</code>对象删除引用，成为另一个<code>堆</code>对象的下游<br>伪代码:</p>
-<figure class="highlight plain"><table><tbody><tr><td class="code"><pre><span class="line">堆对象10-&gt;对象7 = 堆对象7；       //将堆对象7 挂在 堆对象10 下游</span><br><span class="line">堆对象4-&gt;对象7 = null；         //对象4 删除引用 对象7</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">堆对象10-&gt;对象7 &#x3D; 堆对象7；       &#x2F;&#x2F;将堆对象7 挂在 堆对象10 下游</span><br><span class="line">堆对象4-&gt;对象7 &#x3D; null；         &#x2F;&#x2F;对象4 删除引用 对象7</span><br></pre></td></tr></table></figure>
 <p><img src="hwb-8.png" alt="hwb-8"><br><img src="hwb-9.png" alt="hwb-9"><br><img src="hwb-10.png" alt="hwb-10"></p>
 <p><strong>场景四</strong><br>对象从一个<code>栈</code>对象删除引用，成为另一个<code>堆</code>对象的下游<br>伪代码:</p>
-<figure class="highlight plain"><table><tbody><tr><td class="code"><pre><span class="line">堆对象10-&gt;对象7 = 堆对象7；       //将堆对象7 挂在 堆对象10 下游</span><br><span class="line">堆对象4-&gt;对象7 = null；         //对象4 删除引用 对象7</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">堆对象10-&gt;对象7 &#x3D; 堆对象7；       &#x2F;&#x2F;将堆对象7 挂在 堆对象10 下游</span><br><span class="line">堆对象4-&gt;对象7 &#x3D; null；         &#x2F;&#x2F;对象4 删除引用 对象7</span><br></pre></td></tr></table></figure>
 <p><img src="hwb-11.png" alt="hwb-11"><br><img src="hwb-12.png" alt="hwb-12"><br><img src="hwb-13.png" alt="hwb-13"></p>
 <p>Golang中的<code>混合写屏障</code>满足<code>弱三色不变式</code>，结合了删除写屏障和插入写屏障的优点，只需要在开始时并发扫描各个goroutine的<code>栈</code>，使其变<code>黑</code>并一直保持，这个过程不需要<code>STW</code>，而标记结束后，因为<code>栈</code>在扫描后始终是<code>黑色</code>的，也无需再进行re-scan操作了，减少了<code>STW</code>的时间。</p>
 <h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>以上便是Golang的GC全部的标记-清除逻辑及场景演示全过程。</p>
@@ -118,6 +118,73 @@
         <tag>golang</tag>
         <tag>gc</tag>
         <tag>面试题</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>markdown emoji</title>
+    <url>/2021/01/31/hexo-emoji/</url>
+    <content><![CDATA[<div class="row">
+<div class="col col-sm-3">
+<p><span class="github-emoji" alias="smile" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f604.png?v8">&#x1f604;</span> <code>:smile:</code> </p>
+
+</div> 
+<div class="col col-sm-3">
+<p><span class="github-emoji" alias="rage" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f621.png?v8">&#x1f621;</span> <code>:rage:</code> </p>
+
+</div> 
+<div class="col col-sm-3">
+<p><span class="github-emoji" alias="x" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/274c.png?v8">&#x274c;</span> <code>:x:</code> </p>
+
+</div>
+<div class="col col-sm-3">
+<p><span class="github-emoji" alias="clock1130" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f566.png?v8">&#x1f566;</span> <code>:clock1130:</code> </p>
+
+</div>
+</div>
+<div class="row">
+<div class="col col-sm-3">
+<p><span class="github-emoji" alias="house" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f3e0.png?v8">&#x1f3e0;</span> <code>:house:</code> </p>
+
+</div>
+<div class="col col-sm-3">
+<p><span class="github-emoji" alias="fire" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f525.png?v8">&#x1f525;</span> <code>:fire:</code> </p>
+
+</div>
+<div class="col col-sm-3">
+<p><span class="github-emoji" alias="sun_with_face" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f31e.png?v8">&#x1f31e;</span> <code>:sun_with_face:</code> </p>
+
+</div>
+<div class="col col-sm-3">
+<p><span class="github-emoji" alias="one" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/0031-20e3.png?v8">&#x0031;&#xfe0f;&#x20e3;</span> <code>:one:</code> </p>
+
+</div>
+</div>
+<div class="row">
+<div class="col col-sm-3">
+<p><span class="github-emoji" alias="recycle" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/267b.png?v8">&#x267b;</span> <code>:recycle:</code> </p>
+
+</div>
+<div class="col col-sm-3">
+<p><span class="github-emoji" alias="dart" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f3af.png?v8">&#x1f3af;</span> <code>:dart:</code> </p>
+
+</div>
+<div class="col col-sm-3">
+<p><span class="github-emoji" alias="libra" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/264e.png?v8">&#x264e;</span> <code>:libra:</code> </p>
+
+</div>
+<div class="col col-sm-3">
+<p><span class="github-emoji" alias="underage" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f51e.png?v8">&#x1f51e;</span> <code>:underage:</code> </p>
+
+</div>
+</div>
+
+<blockquote>
+<p>Check out the <a href="https://www.webfx.com/tools/emoji-cheat-sheet/">Emoji Cheat Sheet</a> for all the emojis it supports</p>
+</blockquote>
+]]></content>
+      <tags>
+        <tag>emoji</tag>
+        <tag>markdown</tag>
       </tags>
   </entry>
   <entry>
@@ -230,7 +297,7 @@
 </ol>
 <h3 id="调度器的生命周期"><a href="#调度器的生命周期" class="headerlink" title="调度器的生命周期"></a>调度器的生命周期</h3><p><img src="go-schd-4.png" alt="go-schd-4.png"><br><strong>M0</strong><br><code>M0</code>是启动程序后的编号为0的主线程，这个<code>M</code>对应的实例会在全局变量<code>runtime.m0</code>中，不需要在heap上分配，<code>M0</code>负责执行初始化操作和启动第一个<code>G</code>， 在之后<code>M0</code>就和其他的<code>M</code>一样了。<br><strong>G0</strong><br><code>G0</code>是每次启动一个<code>M</code>都会第一个创建的gourtine，<code>G0</code>仅用于负责调度的<code>G</code>，<code>G0</code>不指向任何可执行的函数, 每个<code>M</code>都会有一个自己的<code>G0</code>。在调度或系统调用时会使用<code>G0</code>的栈空间, 全局变量的<code>G0</code>是<code>M0</code>的<code>G0</code>。</p>
 <p>我们来跟踪一段代码</p>
-<figure class="highlight go"><table><tbody><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">"fmt"</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> {</span><br><span class="line">    fmt.Println(<span class="string">"Hello world"</span>)</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">&quot;fmt&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">    fmt.Println(<span class="string">&quot;Hello world&quot;</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>接下来我们来针对上面的代码对调度器里面的结构做一个分析, 也会经历如上图所示的过程：</p>
 <ol>
 <li><code>runtime</code>创建最初的线程<code>M0</code>和<code>G0</code>，并把两者关联。</li>
@@ -243,19 +310,19 @@
 </ol>
 <h3 id="可视化GMP编程"><a href="#可视化GMP编程" class="headerlink" title="可视化GMP编程"></a>可视化GMP编程</h3><p>有2种方式可以查看一个程序的GMP的数据</p>
 <h4 id="方式1：go-tool-trace"><a href="#方式1：go-tool-trace" class="headerlink" title="方式1：go tool trace"></a>方式1：go tool trace</h4><p>trace记录了运行时的信息，能提供可视化的Web页面。<br>简单测试代码：main函数创建trace，trace会运行在单独的goroutine中，然后main打印”Hello World”退出。</p>
-<figure class="highlight go"><table><tbody><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">    <span class="string">"os"</span></span><br><span class="line">    <span class="string">"fmt"</span></span><br><span class="line">    <span class="string">"runtime/trace"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> {</span><br><span class="line"></span><br><span class="line">    <span class="comment">//创建trace文件</span></span><br><span class="line">    f, err := os.Create(<span class="string">"trace.out"</span>)</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span> {</span><br><span class="line">        <span class="built_in">panic</span>(err)</span><br><span class="line">    }</span><br><span class="line"></span><br><span class="line">    <span class="keyword">defer</span> f.Close()</span><br><span class="line"></span><br><span class="line">    <span class="comment">//启动trace goroutine</span></span><br><span class="line">    err = trace.Start(f)</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span> {</span><br><span class="line">        <span class="built_in">panic</span>(err)</span><br><span class="line">    }</span><br><span class="line">    <span class="keyword">defer</span> trace.Stop()</span><br><span class="line"></span><br><span class="line">    <span class="comment">//main</span></span><br><span class="line">    fmt.Println(<span class="string">"Hello World"</span>)</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">    <span class="string">&quot;os&quot;</span></span><br><span class="line">    <span class="string">&quot;fmt&quot;</span></span><br><span class="line">    <span class="string">&quot;runtime/trace&quot;</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//创建trace文件</span></span><br><span class="line">    f, err := os.Create(<span class="string">&quot;trace.out&quot;</span>)</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">        <span class="built_in">panic</span>(err)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">defer</span> f.Close()</span><br><span class="line"></span><br><span class="line">    <span class="comment">//启动trace goroutine</span></span><br><span class="line">    err = trace.Start(f)</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">        <span class="built_in">panic</span>(err)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">defer</span> trace.Stop()</span><br><span class="line"></span><br><span class="line">    <span class="comment">//main</span></span><br><span class="line">    fmt.Println(<span class="string">&quot;Hello World&quot;</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>运行程序</p>
-<figure class="highlight bash"><table><tbody><tr><td class="code"><pre><span class="line">$ go run trace.go </span><br><span class="line">Hello World</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ go run trace.go </span><br><span class="line">Hello World</span><br></pre></td></tr></table></figure>
 <p>会得到一个trace.out文件，然后我们可以用一个工具打开，来分析这个文件。</p>
-<figure class="highlight bash"><table><tbody><tr><td class="code"><pre><span class="line">$ go tool trace trace.out </span><br><span class="line">2020/02/23 10:44:11 Parsing trace...</span><br><span class="line">2020/02/23 10:44:11 Splitting trace...</span><br><span class="line">2020/02/23 10:44:11 Opening browser. Trace viewer is listening on http://127.0.0.1:33479</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ go tool trace trace.out </span><br><span class="line">2020/02/23 10:44:11 Parsing trace...</span><br><span class="line">2020/02/23 10:44:11 Splitting trace...</span><br><span class="line">2020/02/23 10:44:11 Opening browser. Trace viewer is listening on http://127.0.0.1:33479</span><br></pre></td></tr></table></figure>
 <p>我们可以通过浏览器打开<a href="http://127.0.0.1:33479网址，点击view">http://127.0.0.1:33479网址，点击view</a> trace 能够看见可视化的调度流程。<br><img src="trace-1.png" alt="trace-1"><br><img src="trace-2.png" alt="trace-2"></p>
 <p><strong>G信息</strong>：点击Goroutines那一行可视化的数据条，我们会看到一些详细的信息。<br><img src="trace-3.png" alt="trace-3"><br><em>一共有两个G在程序中，一个是特殊的G0，是每个M必须有的一个初始化的G，这个我们不必讨论</em><br>其中G1应该就是main goroutine(执行main函数的协程)，在一段时间内处于可运行和运行的状态。</p>
 <p><strong>M信息</strong>：点击Threads那一行可视化的数据条，我们会看到一些详细的信息。<br><img src="trace-4.png" alt="trace-4"><br><em>一共有两个M在程序中，一个是特殊的M0，用于初始化使用，这个我们不必讨论</em><br><img src="trace-5.png" alt="trace-5"><br>G1中调用了main.main，创建了trace goroutine G18。G1运行在P1上，G18运行在P0上。<br>这里有两个P，我们知道，一个P必须绑定一个M才能调度G。<br>我们在来看看上面的M信息。<br><img src="trace-6.png" alt="trace-6"><br>我们会发现，确实G18在P0上被运行的时候，确实在Threads行多了一个M的数据，点击查看如下：<br><img src="trace-7.png" alt="trace-7"><br>多了一个M2应该就是P0为了执行G18而动态创建的M2.</p>
-<h4 id="方式2：Debug-trace"><a href="#方式2：Debug-trace" class="headerlink" title="方式2：Debug trace"></a>方式2：Debug trace</h4><figure class="highlight go"><table><tbody><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">    <span class="string">"fmt"</span></span><br><span class="line">    <span class="string">"time"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> {</span><br><span class="line">    <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; <span class="number">5</span>; i++ {</span><br><span class="line">        time.Sleep(time.Second)</span><br><span class="line">        fmt.Println(<span class="string">"Hello World"</span>)</span><br><span class="line">    }</span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
+<h4 id="方式2：Debug-trace"><a href="#方式2：Debug-trace" class="headerlink" title="方式2：Debug trace"></a>方式2：Debug trace</h4><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">    <span class="string">&quot;fmt&quot;</span></span><br><span class="line">    <span class="string">&quot;time&quot;</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">    <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; <span class="number">5</span>; i++ &#123;</span><br><span class="line">        time.Sleep(time.Second)</span><br><span class="line">        fmt.Println(<span class="string">&quot;Hello World&quot;</span>)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>编译</p>
-<figure class="highlight bash"><table><tbody><tr><td class="code"><pre><span class="line">$ go build trace2.go</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ go build trace2.go</span><br></pre></td></tr></table></figure>
 <p>通过Debug方式运行</p>
-<figure class="highlight bash"><table><tbody><tr><td class="code"><pre><span class="line">$ GODEBUG=schedtrace=1000 ./trace2 </span><br><span class="line">SCHED 0ms: gomaxprocs=2 idleprocs=0 threads=4 spinningthreads=1 idlethreads=1 runqueue=0 [0 0]</span><br><span class="line">Hello World</span><br><span class="line">SCHED 1003ms: gomaxprocs=2 idleprocs=2 threads=4 spinningthreads=0 idlethreads=2 runqueue=0 [0 0]</span><br><span class="line">Hello World</span><br><span class="line">SCHED 2014ms: gomaxprocs=2 idleprocs=2 threads=4 spinningthreads=0 idlethreads=2 runqueue=0 [0 0]</span><br><span class="line">Hello World</span><br><span class="line">SCHED 3015ms: gomaxprocs=2 idleprocs=2 threads=4 spinningthreads=0 idlethreads=2 runqueue=0 [0 0]</span><br><span class="line">Hello World</span><br><span class="line">SCHED 4023ms: gomaxprocs=2 idleprocs=2 threads=4 spinningthreads=0 idlethreads=2 runqueue=0 [0 0]</span><br><span class="line">Hello World</span><br></pre></td></tr></tbody></table></figure>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ GODEBUG=schedtrace=1000 ./trace2 </span><br><span class="line">SCHED 0ms: gomaxprocs=2 idleprocs=0 threads=4 spinningthreads=1 idlethreads=1 runqueue=0 [0 0]</span><br><span class="line">Hello World</span><br><span class="line">SCHED 1003ms: gomaxprocs=2 idleprocs=2 threads=4 spinningthreads=0 idlethreads=2 runqueue=0 [0 0]</span><br><span class="line">Hello World</span><br><span class="line">SCHED 2014ms: gomaxprocs=2 idleprocs=2 threads=4 spinningthreads=0 idlethreads=2 runqueue=0 [0 0]</span><br><span class="line">Hello World</span><br><span class="line">SCHED 3015ms: gomaxprocs=2 idleprocs=2 threads=4 spinningthreads=0 idlethreads=2 runqueue=0 [0 0]</span><br><span class="line">Hello World</span><br><span class="line">SCHED 4023ms: gomaxprocs=2 idleprocs=2 threads=4 spinningthreads=0 idlethreads=2 runqueue=0 [0 0]</span><br><span class="line">Hello World</span><br></pre></td></tr></table></figure>
 <p><code>SCHED</code>：调试信息输出标志字符串，代表本行是goroutine调度器的输出；<br><code>0ms</code>：即从程序启动到输出这行日志的时间；<br><code>gomaxprocs</code>: P的数量，本例有2个P, 因为默认的P的属性是和cpu核心数量默认一致，当然也可以通过GOMAXPROCS来设置；<br><code>idleprocs</code>: 处于idle状态的P的数量；通过gomaxprocs和idleprocs的差值，我们就可知道执行go代码的P的数量；<br><code>threads</code>: os threads/M的数量，包含scheduler使用的m数量，加上runtime自用的类似sysmon这样的thread的数量；<br><code>spinningthreads</code>: 处于自旋状态的os thread数量；<br><code>idlethread</code>: 处于idle状态的os thread的数量；<br><code>runqueue=0</code>： Scheduler全局队列中G的数量；<br><code>[0 0]</code>: 分别为2个P的local queue中的G的数量。</p>
 <h2 id="三、Go调度器调度场景过程全解析"><a href="#三、Go调度器调度场景过程全解析" class="headerlink" title="三、Go调度器调度场景过程全解析"></a>三、Go调度器调度场景过程全解析</h2><h3 id="场景1"><a href="#场景1" class="headerlink" title="场景1"></a>场景1</h3><p>P拥有G1，M1获取P后开始运行G1，G1使用go func()创建了G2，为了局部性G2优先加入到P1的本地队列。<br><img src="scene-1.png" alt="scene-1"></p>
 <h3 id="场景2"><a href="#场景2" class="headerlink" title="场景2"></a>场景2</h3><p>G1运行完成后(函数：<code>goexit</code>)，M上运行的goroutine切换为G0，G0负责调度时协程的切换（函数：<code>schedule</code>）。从P的本地队列取G2，从G0切换到G2，并开始运行G2(函数：<code>execute</code>)。实现了线程M1的复用。<br><img src="scene-2.png" alt="scene-2"></p>
