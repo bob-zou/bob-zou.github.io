@@ -277,5 +277,10 @@ GoV1.8-三色标记法，混合写屏障机制， 栈空间不启动，堆空间
  - https://www.jianshu.com/p/eb6b3aff9ca5
  - https://zhuanlan.zhihu.com/p/74853110
 
+## 相关好博客推荐
+ - [Garbage Collection In Go : Part I - Semantics](https://www.ardanlabs.com/blog/2018/12/garbage-collection-in-go-part1-semantics.html)
+ - [Garbage Collection In Go : Part II - GC Traces](https://www.ardanlabs.com/blog/2019/05/garbage-collection-in-go-part2-gctraces.html)
+ - [Garbage Collection In Go : Part III - GC Pacing](https://www.ardanlabs.com/blog/2019/07/garbage-collection-in-go-part3-gcpacing.html)
+
 **原文作者:** [刘丹冰 Aceld](https://segmentfault.com/u/aceld)
 **原文地址:** [Golang三色标记、混合写屏障GC模式图文全分析](https://segmentfault.com/a/1190000022030353)
