@@ -1,5 +1,5 @@
 ---
-title: markdown emoji
+title: Markdown Emoji
 date: 2021-01-31 20:49:35
 tags: [emoji, markdown]
 no-emoji: true
