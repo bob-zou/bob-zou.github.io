@@ -34,5 +34,6 @@ var description = '';
     <% if (theme.rss){ %><link rel="alternative" href="<%- theme.rss %>" title="<%= config.title %>" type="application/atom+xml"> <% } %>
     <% if (theme.favicon){ %><link rel="icon" href="<%- url_for(theme.favicon) %>"> <% } %>
     <% if (theme.gitalk.enable){ %><%- css(['//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css'])%><%}%>
+    <%- css(['css/bootstrap.css'])%>
     <%- css(['css/diaspora.css'])%>
 </head>
