@@ -62,7 +62,7 @@ beian:
     # 备案号
     beianInfo: 苏ICP备16016567号-1
     # 链接地址
-    link: http://www.beian.gov.cn/portal/download
+    link: https://cdn.jsdelivr.net/gh/bob-zou/bob-zou.github.io/themes/diaspora/source/img/beian.png
 
 # Gitalk 评论插件（https://github.com/gitalk/gitalk）
 gitalk:
