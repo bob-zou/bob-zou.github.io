@@ -1,6 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>golang 中 slice 和 array 的区别</title>
+    <url>/2021/02/01/golang-array-vs-slice/</url>
+    <content><![CDATA[<h2 id="概要"><a href="#概要" class="headerlink" title="概要"></a>概要</h2><table>
+<thead>
+<tr>
+<th>Array</th>
+<th>Slice</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>底层是一段连续的内存空间</td>
+<td>底层是一个指向数组的指针(数组指针)</td>
+</tr>
+<tr>
+<td>只有len属性, 且长度固定</td>
+<td>有len和cap属性, 且不固定</td>
+</tr>
+<tr>
+<td>Go数组是值类型, 赋值和函数传参操作都会复制整个数组数据</td>
+<td>引用类型</td>
+</tr>
+</tbody></table>
+<h2 id="扩展"><a href="#扩展" class="headerlink" title="扩展"></a>扩展</h2><h3 id="大数组传参"><a href="#大数组传参" class="headerlink" title="大数组传参"></a>大数组传参</h3><p>一个大数组传递给函数会消耗很多内存，采用切片的方式传参可以避免上述问题。<br>切片是引用传递，所以它们不需要使用额外的内存并且比使用数组更有效率。</p>
+<h3 id="性能对比"><a href="#性能对比" class="headerlink" title="性能对比"></a>性能对比</h3><p><strong>测试代码：</strong></p>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">&quot;testing&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> SIZE = <span class="number">100</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">array</span><span class="params">()</span> [<span class="title">SIZE</span>]<span class="title">int</span></span> &#123;</span><br><span class="line">	<span class="keyword">var</span> x [SIZE]<span class="keyword">int</span></span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; <span class="built_in">len</span>(x); i++ &#123;</span><br><span class="line">		x[i] = i</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> x</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">slice</span><span class="params">()</span> []<span class="title">int</span></span> &#123;</span><br><span class="line">	x := <span class="built_in">make</span>([]<span class="keyword">int</span>, SIZE)</span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; <span class="built_in">len</span>(x); i++ &#123;</span><br><span class="line">		x[i] = i</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> x</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">BenchmarkArray</span><span class="params">(b *testing.B)</span></span> &#123;</span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; b.N; i++ &#123;</span><br><span class="line">		array()</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">BenchmarkSlice</span><span class="params">(b *testing.B)</span></span> &#123;</span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; b.N; i++ &#123;</span><br><span class="line">		slice()</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong>执行结果：</strong></p>
+<blockquote>
+<p>各个字段含义: 核数(4)，循环次数，平均每次执行时间，每次执行堆上分配内存总量，分配次数</p>
+</blockquote>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">SIZE=100</span><br><span class="line">BenchmarkArray-4         3633415               312 ns/op               0 B/op          0 allocs/op</span><br><span class="line">BenchmarkSlice-4         2575620               499 ns/op             896 B/op          1 allocs/op</span><br></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">SIZE=1000</span><br><span class="line">BenchmarkArray-4          437178              2835 ns/op               0 B/op          0 allocs/op</span><br><span class="line">BenchmarkSlice-4          304779              3781 ns/op            8192 B/op          1 allocs/op</span><br></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">SIZE=10000</span><br><span class="line">BenchmarkArray-4           38402             27179 ns/op               0 B/op          0 allocs/op</span><br><span class="line">BenchmarkSlice-4           33938             36109 ns/op           81920 B/op          1 allocs/op</span><br></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">SIZE=100000</span><br><span class="line">BenchmarkArray-4            3666            294832 ns/op               0 B/op          0 allocs/op</span><br><span class="line">BenchmarkSlice-4            2868            358106 ns/op          802818 B/op          1 allocs/op</span><br></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">SIZE=1000000</span><br><span class="line">BenchmarkArray-4             213           5484479 ns/op               0 B/op          0 allocs/op</span><br><span class="line">BenchmarkSlice-4             358           3994363 ns/op         8003590 B/op          1 allocs/op</span><br></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">SIZE=10000000</span><br><span class="line">BenchmarkArray-4               7         170413247 ns/op        80003074 B/op          1 allocs/op</span><br><span class="line">BenchmarkSlice-4              42          27718152 ns/op        80003080 B/op          1 allocs/op</span><br></pre></td></tr></table></figure>
+<p>这样对比看来，并非所有时候都适合用切片代替数组，因为切片底层数组可能会在堆上分配内存，而且小数组在栈上拷贝的消耗也未必比 make 消耗大。</p>
+<h3 id="Array-修改拷贝的值不影响原来的数组"><a href="#Array-修改拷贝的值不影响原来的数组" class="headerlink" title="Array 修改拷贝的值不影响原来的数组"></a>Array 修改拷贝的值不影响原来的数组</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">&quot;fmt&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">    a := [<span class="number">5</span>]<span class="keyword">int</span>&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">5</span>, <span class="number">6</span>&#125;</span><br><span class="line">    b := a</span><br><span class="line">    b[<span class="number">0</span>] = <span class="number">10</span></span><br><span class="line">    fmt.Println(a, b) <span class="comment">// [1 2 3 5 6] [10 2 3 5 6]</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="Slice-底层是数组指针-修改拷贝的值影响原来的切片"><a href="#Slice-底层是数组指针-修改拷贝的值影响原来的切片" class="headerlink" title="Slice 底层是数组指针, 修改拷贝的值影响原来的切片"></a>Slice 底层是数组指针, 修改拷贝的值影响原来的切片</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">&quot;fmt&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">	a := []<span class="keyword">int</span>&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">5</span>, <span class="number">6</span>&#125;</span><br><span class="line">	b := a</span><br><span class="line">	b[<span class="number">0</span>] = <span class="number">10</span></span><br><span class="line">	fmt.Println(a, b) <span class="comment">// [10 2 3 5 6] [10 2 3 5 6]</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="在cap不足时-append会返回新的切片"><a href="#在cap不足时-append会返回新的切片" class="headerlink" title="在cap不足时, append会返回新的切片"></a>在cap不足时, append会返回新的切片</h3><blockquote>
+<p>当原来切片的cap小于1024时, 新切片的cap为原来的 2 倍<br>当原来切片的cap大于等于1024时, 新切片的cap为原来的 1.25 倍</p>
+</blockquote>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">&quot;fmt&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">	a := []<span class="keyword">int</span>&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">5</span>, <span class="number">6</span>&#125;</span><br><span class="line">	b := a</span><br><span class="line">	b = <span class="built_in">append</span>(b, <span class="number">7</span>)</span><br><span class="line">	b[<span class="number">0</span>] = <span class="number">10</span></span><br><span class="line">	fmt.Println(a, <span class="built_in">len</span>(a), <span class="built_in">cap</span>(a)) <span class="comment">// [1 2 3 5 6] 5 5</span></span><br><span class="line">	fmt.Println(b, <span class="built_in">len</span>(b), <span class="built_in">cap</span>(b)) <span class="comment">// [10 2 3 5 6 7] 6 10</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+      <tags>
+        <tag>golang</tag>
+        <tag>array</tag>
+        <tag>slice</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Golang三色标记、混合写屏障GC模式图文全分析</title>
     <url>/2021/01/28/golang-gc/</url>
     <content><![CDATA[<blockquote>
@@ -118,6 +167,15 @@
         <tag>golang</tag>
         <tag>gc</tag>
         <tag>面试题</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>深入解析 Go 中 Slice 底层实现</title>
+    <url>/2021/02/03/golang-slice/</url>
+    <content><![CDATA[]]></content>
+      <tags>
+        <tag>golang</tag>
+        <tag>slice</tag>
       </tags>
   </entry>
   <entry>

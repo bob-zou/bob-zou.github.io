@@ -5,32 +5,12 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
     <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Markdown Emoji - Bob Zou</title>
+    <title>深入解析 Go 中 Slice 底层实现 - Bob Zou</title>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="google" content="notranslate" />
     <meta name="keywords" content="BobZou,"> 
-    <meta name="description" content="
-
-&amp;#x1f604; :smile: 
-
- 
-
-&amp;#x1f621; :rage: 
-
- 
-
-&amp;#x274c; :x: 
-
-
-
-&amp;#x1f566; :clock1130: 
-
-
-
-
-
-&amp;#x1f3e,"> 
+    
     <meta name="author" content="Bob Zou"> 
     <link rel="alternative" href="atom.xml" title="Bob Zou" type="application/atom+xml"> 
     <link rel="icon" href="https://cdn.jsdelivr.net/gh/bob-zou/bob-zou.github.io/themes/diaspora/source/img/favicon.png"> 
@@ -53,7 +33,7 @@
     <div class="bar" style="width: 0;"></div>
     <a class="iconfont icon-home image-icon" href="javascript:;" data-url="https://blog.zouyapeng.com"></a>
     <div title="播放/暂停" class="iconfont icon-play"></div>
-    <h3 class="subtitle">Markdown Emoji</h3>
+    <h3 class="subtitle">深入解析 Go 中 Slice 底层实现</h3>
     <div class="social">
         <div>
             <div class="share">
@@ -68,74 +48,16 @@
     <div class="section">
         <div class="article">
     <div class='main'>
-        <h1 class="title">Markdown Emoji</h1>
+        <h1 class="title">深入解析 Go 中 Slice 底层实现</h1>
         <div class="stuff">
-            <span>一月 31, 2021</span>
+            <span>二月 03, 2021</span>
             
-  <ul class="post-tags-list" itemprop="keywords"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/emoji/" rel="tag">emoji</a></li><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/markdown/" rel="tag">markdown</a></li></ul>
+  <ul class="post-tags-list" itemprop="keywords"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/golang/" rel="tag">golang</a></li><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/slice/" rel="tag">slice</a></li></ul>
 
 
         </div>
         <div class="content markdown">
-            <div class="row">
-<div class="col col-sm-3">
-<p><span class="github-emoji" alias="smile" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f604.png?v8">&#x1f604;</span> <code>:smile:</code> </p>
-
-</div> 
-<div class="col col-sm-3">
-<p><span class="github-emoji" alias="rage" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f621.png?v8">&#x1f621;</span> <code>:rage:</code> </p>
-
-</div> 
-<div class="col col-sm-3">
-<p><span class="github-emoji" alias="x" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/274c.png?v8">&#x274c;</span> <code>:x:</code> </p>
-
-</div>
-<div class="col col-sm-3">
-<p><span class="github-emoji" alias="clock1130" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f566.png?v8">&#x1f566;</span> <code>:clock1130:</code> </p>
-
-</div>
-</div>
-<div class="row">
-<div class="col col-sm-3">
-<p><span class="github-emoji" alias="house" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f3e0.png?v8">&#x1f3e0;</span> <code>:house:</code> </p>
-
-</div>
-<div class="col col-sm-3">
-<p><span class="github-emoji" alias="fire" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f525.png?v8">&#x1f525;</span> <code>:fire:</code> </p>
-
-</div>
-<div class="col col-sm-3">
-<p><span class="github-emoji" alias="sun_with_face" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f31e.png?v8">&#x1f31e;</span> <code>:sun_with_face:</code> </p>
-
-</div>
-<div class="col col-sm-3">
-<p><span class="github-emoji" alias="one" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/0031-20e3.png?v8">&#x0031;&#xfe0f;&#x20e3;</span> <code>:one:</code> </p>
-
-</div>
-</div>
-<div class="row">
-<div class="col col-sm-3">
-<p><span class="github-emoji" alias="recycle" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/267b.png?v8">&#x267b;</span> <code>:recycle:</code> </p>
-
-</div>
-<div class="col col-sm-3">
-<p><span class="github-emoji" alias="dart" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f3af.png?v8">&#x1f3af;</span> <code>:dart:</code> </p>
-
-</div>
-<div class="col col-sm-3">
-<p><span class="github-emoji" alias="libra" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/264e.png?v8">&#x264e;</span> <code>:libra:</code> </p>
-
-</div>
-<div class="col col-sm-3">
-<p><span class="github-emoji" alias="underage" style="" fallback-src="https://github.githubassets.com/images/icons/emoji/unicode/1f51e.png?v8">&#x1f51e;</span> <code>:underage:</code> </p>
-
-</div>
-</div>
-
-<blockquote>
-<p>Check out the <a target="_blank" rel="noopener" href="https://www.webfx.com/tools/emoji-cheat-sheet/">Emoji Cheat Sheet</a> for all the emojis it supports</p>
-</blockquote>
-
+            
             <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
             <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
                 <source type="audio/mpeg" src="">

@@ -1,0 +1,258 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN,en,default" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>golang 中 slice 和 array 的区别 - Bob Zou</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="BobZou,"> 
+    <meta name="description" content="概要
+
+
+Array
+Slice
+
+
+
+底层是一段连续的内存空间
+底层是一个指向数组的指针(数组指针)
+
+
+只有len属性, 且长度固定
+有len和cap属性, 且不固定
+
+
+Go数组是值类型, 赋,"> 
+    <meta name="author" content="Bob Zou"> 
+    <link rel="alternative" href="atom.xml" title="Bob Zou" type="application/atom+xml"> 
+    <link rel="icon" href="https://cdn.jsdelivr.net/gh/bob-zou/bob-zou.github.io/themes/diaspora/source/img/favicon.png"> 
+    
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+
+    
+<link rel="stylesheet" href="/css/bootstrap.css">
+
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+<meta name="generator" content="Hexo 5.3.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">Bob Zou</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="iconfont icon-home image-icon" href="javascript:;" data-url="https://blog.zouyapeng.com"></a>
+    <div title="播放/暂停" class="iconfont icon-play"></div>
+    <h3 class="subtitle">golang 中 slice 和 array 的区别</h3>
+    <div class="social">
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="iconfont icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">golang 中 slice 和 array 的区别</h1>
+        <div class="stuff">
+            <span>二月 01, 2021</span>
+            
+  <ul class="post-tags-list" itemprop="keywords"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/array/" rel="tag">array</a></li><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/golang/" rel="tag">golang</a></li><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/slice/" rel="tag">slice</a></li></ul>
+
+
+        </div>
+        <div class="content markdown">
+            <h2 id="概要"><a href="#概要" class="headerlink" title="概要"></a>概要</h2><table>
+<thead>
+<tr>
+<th>Array</th>
+<th>Slice</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>底层是一段连续的内存空间</td>
+<td>底层是一个指向数组的指针(数组指针)</td>
+</tr>
+<tr>
+<td>只有len属性, 且长度固定</td>
+<td>有len和cap属性, 且不固定</td>
+</tr>
+<tr>
+<td>Go数组是值类型, 赋值和函数传参操作都会复制整个数组数据</td>
+<td>引用类型</td>
+</tr>
+</tbody></table>
+<h2 id="扩展"><a href="#扩展" class="headerlink" title="扩展"></a>扩展</h2><h3 id="大数组传参"><a href="#大数组传参" class="headerlink" title="大数组传参"></a>大数组传参</h3><p>一个大数组传递给函数会消耗很多内存，采用切片的方式传参可以避免上述问题。<br>切片是引用传递，所以它们不需要使用额外的内存并且比使用数组更有效率。</p>
+<h3 id="性能对比"><a href="#性能对比" class="headerlink" title="性能对比"></a>性能对比</h3><p><strong>测试代码：</strong></p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">&quot;testing&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> SIZE = <span class="number">100</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">array</span><span class="params">()</span> [<span class="title">SIZE</span>]<span class="title">int</span></span> &#123;</span><br><span class="line">	<span class="keyword">var</span> x [SIZE]<span class="keyword">int</span></span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; <span class="built_in">len</span>(x); i++ &#123;</span><br><span class="line">		x[i] = i</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> x</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">slice</span><span class="params">()</span> []<span class="title">int</span></span> &#123;</span><br><span class="line">	x := <span class="built_in">make</span>([]<span class="keyword">int</span>, SIZE)</span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; <span class="built_in">len</span>(x); i++ &#123;</span><br><span class="line">		x[i] = i</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> x</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">BenchmarkArray</span><span class="params">(b *testing.B)</span></span> &#123;</span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; b.N; i++ &#123;</span><br><span class="line">		array()</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">BenchmarkSlice</span><span class="params">(b *testing.B)</span></span> &#123;</span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; b.N; i++ &#123;</span><br><span class="line">		slice()</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong>执行结果：</strong></p>
+<blockquote>
+<p>各个字段含义: 核数(4)，循环次数，平均每次执行时间，每次执行堆上分配内存总量，分配次数</p>
+</blockquote>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">SIZE=100</span><br><span class="line">BenchmarkArray-4         3633415               312 ns/op               0 B/op          0 allocs/op</span><br><span class="line">BenchmarkSlice-4         2575620               499 ns/op             896 B/op          1 allocs/op</span><br></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">SIZE=1000</span><br><span class="line">BenchmarkArray-4          437178              2835 ns/op               0 B/op          0 allocs/op</span><br><span class="line">BenchmarkSlice-4          304779              3781 ns/op            8192 B/op          1 allocs/op</span><br></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">SIZE=10000</span><br><span class="line">BenchmarkArray-4           38402             27179 ns/op               0 B/op          0 allocs/op</span><br><span class="line">BenchmarkSlice-4           33938             36109 ns/op           81920 B/op          1 allocs/op</span><br></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">SIZE=100000</span><br><span class="line">BenchmarkArray-4            3666            294832 ns/op               0 B/op          0 allocs/op</span><br><span class="line">BenchmarkSlice-4            2868            358106 ns/op          802818 B/op          1 allocs/op</span><br></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">SIZE=1000000</span><br><span class="line">BenchmarkArray-4             213           5484479 ns/op               0 B/op          0 allocs/op</span><br><span class="line">BenchmarkSlice-4             358           3994363 ns/op         8003590 B/op          1 allocs/op</span><br></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">SIZE=10000000</span><br><span class="line">BenchmarkArray-4               7         170413247 ns/op        80003074 B/op          1 allocs/op</span><br><span class="line">BenchmarkSlice-4              42          27718152 ns/op        80003080 B/op          1 allocs/op</span><br></pre></td></tr></table></figure>
+<p>这样对比看来，并非所有时候都适合用切片代替数组，因为切片底层数组可能会在堆上分配内存，而且小数组在栈上拷贝的消耗也未必比 make 消耗大。</p>
+<h3 id="Array-修改拷贝的值不影响原来的数组"><a href="#Array-修改拷贝的值不影响原来的数组" class="headerlink" title="Array 修改拷贝的值不影响原来的数组"></a>Array 修改拷贝的值不影响原来的数组</h3><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">&quot;fmt&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">    a := [<span class="number">5</span>]<span class="keyword">int</span>&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">5</span>, <span class="number">6</span>&#125;</span><br><span class="line">    b := a</span><br><span class="line">    b[<span class="number">0</span>] = <span class="number">10</span></span><br><span class="line">    fmt.Println(a, b) <span class="comment">// [1 2 3 5 6] [10 2 3 5 6]</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="Slice-底层是数组指针-修改拷贝的值影响原来的切片"><a href="#Slice-底层是数组指针-修改拷贝的值影响原来的切片" class="headerlink" title="Slice 底层是数组指针, 修改拷贝的值影响原来的切片"></a>Slice 底层是数组指针, 修改拷贝的值影响原来的切片</h3><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">&quot;fmt&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">	a := []<span class="keyword">int</span>&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">5</span>, <span class="number">6</span>&#125;</span><br><span class="line">	b := a</span><br><span class="line">	b[<span class="number">0</span>] = <span class="number">10</span></span><br><span class="line">	fmt.Println(a, b) <span class="comment">// [10 2 3 5 6] [10 2 3 5 6]</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="在cap不足时-append会返回新的切片"><a href="#在cap不足时-append会返回新的切片" class="headerlink" title="在cap不足时, append会返回新的切片"></a>在cap不足时, append会返回新的切片</h3><blockquote>
+<p>当原来切片的cap小于1024时, 新切片的cap为原来的 2 倍<br>当原来切片的cap大于等于1024时, 新切片的cap为原来的 1.25 倍</p>
+</blockquote>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">&quot;fmt&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">	a := []<span class="keyword">int</span>&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">5</span>, <span class="number">6</span>&#125;</span><br><span class="line">	b := a</span><br><span class="line">	b = <span class="built_in">append</span>(b, <span class="number">7</span>)</span><br><span class="line">	b[<span class="number">0</span>] = <span class="number">10</span></span><br><span class="line">	fmt.Println(a, <span class="built_in">len</span>(a), <span class="built_in">cap</span>(a)) <span class="comment">// [1 2 3 5 6] 5 5</span></span><br><span class="line">	fmt.Println(b, <span class="built_in">len</span>(b), <span class="built_in">cap</span>(b)) <span class="comment">// [10 2 3 5 6 7] 6 10</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title='0' data-url='https://cdn.jsdelivr.net/gh/bob-zou/bob-zou.github.io/source/music/BeethovenVirus.mp3'></li>
+                        
+                    
+                        
+                            <li title='1' data-url='https://cdn.jsdelivr.net/gh/bob-zou/bob-zou.github.io/source/music/Lemon.mp3'></li>
+                        
+                    
+                        
+                            <li title='2' data-url='https://cdn.jsdelivr.net/gh/bob-zou/bob-zou.github.io/source/music/MerryChristmas.mp3'></li>
+                        
+                    
+                        
+                            <li title='3' data-url='https://cdn.jsdelivr.net/gh/bob-zou/bob-zou.github.io/source/music/PurplePassion.mp3'></li>
+                        
+                    
+                        
+                            <li title='4' data-url='https://cdn.jsdelivr.net/gh/bob-zou/bob-zou.github.io/source/music/光年之外.mp3'></li>
+                        
+                    
+                        
+                            <li title='5' data-url='https://cdn.jsdelivr.net/gh/bob-zou/bob-zou.github.io/source/music/山楂树の恋.mp3'></li>
+                        
+                    
+                        
+                            <li title='6' data-url='https://cdn.jsdelivr.net/gh/bob-zou/bob-zou.github.io/source/music/岁月神偷.mp3'></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id='gitalk-container' class="comment link"
+		data-enable='true'
+        data-ae='true'
+        data-ci='d1406bfde9be8420341d'
+        data-cs='f962f14f4f65209335cf1e6229cf30eb7394a869'
+        data-r='bob-zou.github.io'
+        data-o='bob-zou'
+        data-a='bob-zou'
+        data-d='false'
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/typed.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+<!-- Google Analytics -->
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-MTN9237PJK"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-MTN9237PJK');
+</script>
+<!-- End Google Analytics -->
+
+
+</html>
