@@ -324,6 +324,24 @@
       </tags>
   </entry>
   <entry>
+    <title>Mysql常见面试题</title>
+    <url>/2021/02/05/mysql-interview/</url>
+    <content><![CDATA[]]></content>
+      <tags>
+        <tag>面试题</tag>
+        <tag>mysql</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>redis常见面试题</title>
+    <url>/2021/02/05/redis-interview/</url>
+    <content><![CDATA[]]></content>
+      <tags>
+        <tag>面试题</tag>
+        <tag>redis</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Golang调度器GMP原理与调度全分析</title>
     <url>/2021/01/29/golang-gmp/</url>
     <content><![CDATA[<blockquote>
