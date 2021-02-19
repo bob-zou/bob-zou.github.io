@@ -5,7 +5,8 @@ tags: [面试题, redis]
 cover: https://cdn.jsdelivr.net/gh/bob-zou/bob-zou.github.io/source/covers/redis-interview.png
 ---
 # Redis常见的数据结构？
-> String、Hash、List、Set、ZSet。
+
+> String、Hash、List、Set、ZSet
 
 ## String 字符串类型
 string类型是redis中最基本的数据类型，一个key对应一个value。
