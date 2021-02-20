@@ -16,7 +16,7 @@ string类型是二进制安全的，意思是redis的string可以包含任何数
 - 计数器：redis是单线程模型，一个命令执行完才会执行下一个，同时数据可以一步落地到其他的数据源。
 - session：常见方案spring session + redis实现session共享
 ## Hash （哈希）
-是一个Map，指值本身又是一种键值对结构，如 value={{field1,value1},......fieldN,valueN}}
+是一个Map，指值本身又是一种键值对结构，如 value=`{{field1,value1},......fieldN,valueN}}`
 **实战场景**
 - 缓存： 能直观，相比**string更节省空间**，的维护缓存信息，如用户信息，视频信息等。
 
