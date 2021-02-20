@@ -342,9 +342,9 @@
 <ul>
 <li>缓存： 经典使用场景，把常用信息，字符串，图片或者视频等信息放到redis中，redis作为缓存层，mysql做持久化层，降低mysql的读写压力。</li>
 <li>计数器：redis是单线程模型，一个命令执行完才会执行下一个，同时数据可以一步落地到其他的数据源。</li>
-<li>session：常见方案spring session + redis实现session共享<h2 id="Hash-（哈希）"><a href="#Hash-（哈希）" class="headerlink" title="Hash （哈希）"></a>Hash （哈希）</h2>是一个Map，指值本身又是一种键值对结构，如 value=<code>&#123;&#123;field1,value1&#125;,......fieldN,valueN&#125;&#125;</code></li>
+<li>session：常见方案spring session + redis实现session共享</li>
 </ul>
-<p><strong>实战场景</strong></p>
+<h2 id="Hash-哈希"><a href="#Hash-哈希" class="headerlink" title="Hash(哈希)"></a>Hash(哈希)</h2><p>是一个Map，指值本身又是一种键值对结构，如 value=<code>&#123;&#123;field1,value1&#125;,......fieldN,valueN&#125;&#125;</code><br><strong>实战场景</strong></p>
 <ul>
 <li>缓存： 能直观，相比<strong>string更节省空间</strong>，的维护缓存信息，如用户信息，视频信息等。</li>
 </ul>
