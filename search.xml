@@ -170,6 +170,41 @@
       </tags>
   </entry>
   <entry>
+    <title>gin vs net/http</title>
+    <url>/2021/02/23/golang-gin-vs-http/</url>
+    <content><![CDATA[<h2 id="gin-优点"><a href="#gin-优点" class="headerlink" title="gin 优点"></a>gin 优点</h2><ul>
+<li>轻量框架，提供web服务的常用工具函数(如panic捕获，json格式校验等等)。开发者可以以少量代码，轻松构建web服务。</li>
+<li>以中间件抽象通用逻辑（如鉴权，检验入参，日志审计等逻辑），供一个或一组URL使用，提高代码复用率。</li>
+<li>基于上述的中间件特性，代码具有很强的可扩展性。</li>
+<li>支持常见的render模板(json, xml, html, yaml, string), 满足轻松动态资源，后端api服务等多种业务场景。</li>
+<li>更高的路由匹配效率。 </li>
+<li>使用context池，减少runtime的GC工作量。</li>
+</ul>
+<h2 id="net-http-和-gin-的关系"><a href="#net-http-和-gin-的关系" class="headerlink" title="net/http 和 gin 的关系"></a>net/http 和 gin 的关系</h2><ul>
+<li><p>gin更像是一个功能强大的路由器，提供更便捷的web服务解决方案，而其余功能则复用net/http。</p>
+</li>
+<li><p>网络层实现，http parser 都是由 net/http 实现的。<br><img src="gin-1.png" alt="gin-1"></p>
+<h2 id="强大的工具包-gin-Context"><a href="#强大的工具包-gin-Context" class="headerlink" title="强大的工具包: gin.Context"></a>强大的工具包: gin.Context</h2><h3 id="gin-Context-的功能"><a href="#gin-Context-的功能" class="headerlink" title="gin.Context 的功能"></a>gin.Context 的功能</h3><p>在日常的web服务开发中，我们总会频繁地使用以下功能：</p>
+</li>
+<li><p>获取query参数</p>
+</li>
+<li><p>读取POST或PUT的请求体</p>
+</li>
+<li><p>请求体的反序列化以及响应体的序列化</p>
+</li>
+<li><p>读写 HTTP Header</p>
+</li>
+<li><p>读写 cookie<br>而gin.Context, 作为一个web框架通用函数工具包，涵盖了上述的功能。<br>此前，笔者没有阅读源码之前，一直以为gin.Context实现了context.Context的Deadline函数，可以用来做一些熔断相关的功能，<br>但其实并没有，类似的功能还是要依赖 net/http 的 Request.Context()来实现。</p>
+</li>
+</ul>
+<h3 id="gin-Context-的优势"><a href="#gin-Context-的优势" class="headerlink" title="gin.Context 的优势"></a>gin.Context 的优势</h3><h2 id="效率更高的路由器：Radix-Tree"><a href="#效率更高的路由器：Radix-Tree" class="headerlink" title="效率更高的路由器：Radix Tree"></a>效率更高的路由器：Radix Tree</h2><h3 id="net-http-路由器的实现"><a href="#net-http-路由器的实现" class="headerlink" title="net/http 路由器的实现"></a>net/http 路由器的实现</h3><h3 id="gin-路由器的实现-radix-tree"><a href="#gin-路由器的实现-radix-tree" class="headerlink" title="gin 路由器的实现: radix tree"></a>gin 路由器的实现: radix tree</h3><h3 id="两种路由器实现的效率差异"><a href="#两种路由器实现的效率差异" class="headerlink" title="两种路由器实现的效率差异"></a>两种路由器实现的效率差异</h3><h2 id="更优雅的抽象：中间件"><a href="#更优雅的抽象：中间件" class="headerlink" title="更优雅的抽象：中间件"></a>更优雅的抽象：中间件</h2>]]></content>
+      <tags>
+        <tag>golang</tag>
+        <tag>面试题</tag>
+        <tag>gin</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>深入解析 Go 中 Slice 底层实现</title>
     <url>/2021/02/03/golang-slice/</url>
     <content><![CDATA[<h2 id="数据结构"><a href="#数据结构" class="headerlink" title="数据结构"></a>数据结构</h2><p>切片本身并不是动态数组或者数组指针。<br>它内部实现的数据结构通过指针引用底层数组，设定相关属性将数据读写操作限定在指定的区域内。<br><strong>切片本身是一个只读对象，其工作机制类似数组指针的一种封装</strong>。</p>
