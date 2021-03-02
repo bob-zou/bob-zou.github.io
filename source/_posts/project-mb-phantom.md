@@ -92,6 +92,7 @@ cover: https://cdn.jsdelivr.net/gh/bob-zou/bob-zou.github.io/source/covers/proje
 
 ## 有待继续优化
 - DB上层应该要再加一层DB连接控制层
+- session虽然做了redis缓存，但是不应该用mysql存储，直接放在redis里面就好了
 - redis只要string的数据类型，其他同的信息可以用不用的类型存储
 - k8s事件只写到了一个分片里面，因为消费事件需要是有续的，所有分片，多个消费者的情况下就变得无序了
 
