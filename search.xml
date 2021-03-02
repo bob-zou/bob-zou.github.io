@@ -415,6 +415,7 @@
 <h3 id="优化六：-统一的网关服务暴露restful接口"><a href="#优化六：-统一的网关服务暴露restful接口" class="headerlink" title="优化六： 统一的网关服务暴露restful接口"></a>优化六： 统一的网关服务暴露restful接口</h3><p>各个服务只需要编写RPC方法就好，由网关服务统一进行restful和RPC的转化。</p>
 <h2 id="有待继续优化"><a href="#有待继续优化" class="headerlink" title="有待继续优化"></a>有待继续优化</h2><ul>
 <li>DB上层应该要再加一层DB连接控制层</li>
+<li>session虽然做了redis缓存，但是不应该用mysql存储，直接放在redis里面就好了</li>
 <li>redis只要string的数据类型，其他同的信息可以用不用的类型存储</li>
 <li>k8s事件只写到了一个分片里面，因为消费事件需要是有续的，所有分片，多个消费者的情况下就变得无序了</li>
 </ul>
